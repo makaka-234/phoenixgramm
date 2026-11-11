@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>PhoneixGram</title>
+<link rel="icon" href="icon.png">
+<style>
+  /* ================= БАЗА ================= */
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Roboto', -apple-system, sans-serif; }
+  html, body { height: 100%; background: #0e1621; color: #fff; overflow: hidden; }
+  
+  .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; transition: transform 0.3s ease, opacity 0.3s ease; background: #0e1621; z-index: 1; }
+  .screen.hidden-right { transform: translateX(100%); pointer-events: none; opacity: 0; }
+  .screen.hidden-left { transform: translateX(-100%); pointer-events: none; opacity: 0; }
+  .screen.hidden-down { transform: translateY(100%); pointer-events: none; opacity: 0; }
+  .screen.active { transform: translate(0); pointer-events: auto; opacity: 1; z-index: 10; }
+
+  /* ================= АВТОРИЗАЦИЯ ================= */
+  #auth-screen { justify-content: center; align-items: center; padding: 20px; background: #17212b; z-index: 100; }
+  .auth-box { width: 100%; max-width: 320px; text-align: center; }
+  /* Логотип обновлен */
+  .auth-logo { width: 90px; height: 90px; border-radius: 50%; background: url('icon.png') center/cover no-repeat; margin: 0 auto 20px; box-shadow: 0 4px 15px rgba(255, 193, 7, 0.2); border: 2px solid #2aabee; }
+  .auth-title { color: #fff; font-size: 24px; font-weight: 500; margin-bottom: 10px; }
+  .auth-desc { color: #7d8b99; font-size: 14px; margin-bottom: 30px; line-height: 1.4; }
+  .auth-input { width: 100%; background: #0e1621; border: 1px solid #2b3a4a; border-radius: 10px; padding: 15px; color: #fff; font-size: 18px; text-align: center; letter-spacing: 2px; outline: none; margin-bottom: 20px; transition: border 0.2s; }
+  .auth-input:focus { border-color: #2aabee; }
+  .auth-btn { width: 100%; background: #2aabee; color: #fff; border: none; border-radius: 10px; padding: 15px; font-size: 16px; font-weight: 500; cursor: pointer; }
+  .auth-btn:active { background: #229ed9; }
+  .error-text { color: #e53935; font-size: 13px; margin-top: 10px; display: none; }
+
+  /* ================= СПИСОК ЧАТОВ ================= */
+  .header-main { background: #17212b; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; font-size: 20px; font-weight: 500; border-bottom: 1px solid #101921; }
+  .chat-list { flex: 1; overflow-y: auto; }
+  .chat-item { display: flex; padding: 12px 16px; align-items: center; gap: 12px; cursor: pointer; border-bottom: 1px solid #101921; }
+  .chat-item:active { background: #1c2733; }
+  /* Аватарка в списке чатов тоже обновлена */
+  .avatar-main { width: 54px; height: 54px; border-radius: 50%; background: url('icon.png') center/cover no-repeat, #2aabee; flex-shrink: 0; }
+  .chat-info { flex: 1; min-width: 0; }
+  .chat-name { font-size: 16px; font-weight: 500; margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .chat-time { font-size: 12px; color: #7d8b99; font-weight: 400; }
+  .chat-preview { font-size: 14px; color: #7d8b99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ================= ЧАТ ================= */
+  .header { background: #17212b; padding: 8px 12px; display: flex; align-items: center; gap: 10px; min-height: 56px; border-bottom: 1px solid #101921; flex-shrink: 0; }
+  .back { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: #fff; cursor: pointer; }
+  .avatar { width: 42px; height: 42px; border-radius: 50%; background: url('icon.png') center/cover no-repeat, #2aabee; flex-shrink: 0; }
+  .chat-title { flex: 1; font-size: 16px; font-weight: 500; }
+  
+  .chat { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 6px; }
+  .chat::-webkit-scrollbar { width: 4px; }
+  .chat::-webkit-scrollbar-thumb { background: #2b3a4a; border-radius: 2px; }
+  
+  .msg { max-width: 85%; padding: 8px 12px; border-radius: 12px; font-size: 15px; line-height: 1.3; word-wrap: break-word; position: relative; }
+  .msg.in { background: #182533; align-self: flex-start; border-bottom-left-radius: 4px; }
+  .msg.out { background: #2b5278; align-self: flex-end; border-bottom-right-radius: 4px; }
+  .msg .meta { font-size: 11px; color: #7d8b99; text-align: right; margin-top: 4px; }
+  
+  .composer { background: #17212b; padding: 8px 12px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .field { flex: 1; background: #0e1621; border: none; border-radius: 18px; padding: 10px 14px; color: #fff; font-size: 15px; outline: none; }
+  .field::placeholder { color: #5a6b7a; }
+  .btn-icon { width: 42px; height: 42px; border-radius: 50%; background: #2aabee; border: none; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+
+  /* ================= МАГАЗИН ================= */
+  .header-gift { background: #17212b; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #101921; flex-shrink: 0; }
+  .header-gift .title { font-size: 18px; font-weight: 500; }
+  .close-gift { color: #7d8b99; font-size: 24px; cursor: pointer; width: 32px; }
+  .balance { background: #2b3a4a; padding: 8px 14px; border-radius: 20px; font-size: 15px; font-weight: 500; display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+  .balance span { color: #ffc107; font-size: 18px; }
+
+  .tabs { display: flex; background: #17212b; overflow-x: auto; white-space: nowrap; border-bottom: 1px solid #101921; padding: 0 10px; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { padding: 12px 16px; color: #7d8b99; font-size: 14px; font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent; }
+  .tab.active { color: #2aabee; border-bottom-color: #2aabee; }
+
+  .shop-content { padding: 16px; overflow-y: auto; flex: 1; }
+  .shop-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .shop-card { background: #17212b; border-radius: 14px; padding: 12px 8px; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; transition: 0.2s; position: relative; overflow: hidden; }
+  .shop-card:active { transform: scale(0.95); }
+  .shop-icon { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 36px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+  .shop-name { font-size: 13px; font-weight: 500; text-align: center; }
+  .shop-price { font-size: 12px; color: #ffc107; font-weight: 500; display: flex; align-items: center; gap: 4px; }
+
+  /* ================= NFT СТИЛЬ ================= */
+  .shop-grid.nft-mode { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .nft-card { background: #17212b; border-radius: 16px; padding: 0; display: flex; flex-direction: column; overflow: hidden; cursor: pointer; position: relative; box-shadow: 0 4px 12px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); transition: transform 0.2s; }
+  .nft-card:active { transform: scale(0.95); }
+  .nft-preview { width: 100%; height: 110px; display: flex; align-items: center; justify-content: center; font-size: 50px; position: relative; }
+  .nft-badge { position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.6); color: #fff; font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600; text-transform: uppercase; backdrop-filter: blur(4px); }
+  .nft-info { padding: 10px; text-align: center; }
+  .nft-name { font-size: 13px; font-weight: 500; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nft-price { font-size: 12px; color: #ffc107; font-weight: 500; margin-top: 4px; }
+
+  /* ================= ИНВЕНТАРЬ ================= */
+  .inventory-btn { background: #2b3a4a; color: #fff; border: none; border-radius: 12px; padding: 15px; width: 100%; margin-top: 20px; font-size: 16px; font-weight: 500; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px; }
+  .inventory-btn:active { background: #34495e; }
+  .inv-list { padding: 16px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 10px; }
+  .inv-item { background: #17212b; padding: 15px; border-radius: 12px; display: flex; align-items: center; gap: 15px; }
+  .inv-icon { font-size: 30px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+  .inv-details { flex: 1; }
+  .inv-name { font-size: 16px; font-weight: 500; margin-bottom: 4px; }
+  .inv-desc { font-size: 13px; color: #7d8b99; }
+
+  /* ================= АДМИН ПАНЕЛЬ ================= */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); opacity: 0; pointer-events: none; transition: 0.3s; z-index: 190; }
+  .overlay.active { opacity: 1; pointer-events: auto; }
+  #admin-panel { position: fixed; bottom: 0; left: 0; width: 100%; background: #17212b; border-radius: 20px 20px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 200; box-shadow: 0 -5px 20px rgba(0,0,0,0.5); }
+  #admin-panel.open { transform: translateY(0); }
+  .admin-title { font-size: 18px; font-weight: 500; margin-bottom: 20px; text-align: center; color: #2aabee; }
+  .admin-group { margin-bottom: 15px; }
+  .admin-label { font-size: 13px; color: #7d8b99; margin-bottom: 6px; display: block; }
+  .admin-input { width: 100%; background: #0e1621; border: 1px solid #2b3a4a; border-radius: 10px; padding: 14px; color: #fff; font-size: 16px; outline: none; transition: border 0.2s; }
+  .admin-input:focus { border-color: #2aabee; }
+  .admin-btns { display: flex; gap: 10px; margin-top: 20px; }
+  .btn { flex: 1; padding: 14px; border-radius: 12px; border: none; font-size: 15px; font-weight: 500; cursor: pointer; }
+  .btn-cancel { background: #2b3a4a; color: #fff; }
+  .btn-save { background: #2aabee; color: #fff; }
+</style>
+</head>
+<body>
+
+  <!-- 1. АВТОРИЗАЦИЯ -->
+  <div id="auth-screen" class="screen active">
+    <div class="auth-box">
+      <div class="auth-logo"></div> <!-- Тут теперь картинка -->
+      <div class="auth-title">PhoneixGram</div>
+      <div class="auth-desc">Введите код подтверждения, который прислал официальный бот PhoneixGram</div>
+      <input type="tel" id="auth-code" class="auth-input" placeholder="Код из бота" maxlength="5">
+      <button class="auth-btn" onclick="verifyCode()">Войти</button>
+      <div id="auth-error" class="error-text">Неверный код. Попробуйте: 12345</div>
+    </div>
+  </div>
+
+  <!-- 2. СПИСОК ЧАТОВ -->
+  <div id="main-screen" class="screen hidden-right">
+    <div class="header-main"><span>PhoneixGram</span></div>
+    <div class="chat-list">
+      <div class="chat-item" onclick="openChat('PhoneixGram', 'P')">
+        <div class="avatar-main"></div> <!-- Картинка -->
+        <div class="chat-info">
+          <div class="chat-name">PhoneixGram <span class="chat-time">12:00</span></div>
+          <div class="chat-preview">Добро пожаловать в PhoneixGram 🔥</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. ЧАТ -->
+  <div id="chat-screen" class="screen hidden-right">
+    <div class="header">
+      <div class="back" onclick="closeChat()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+      </div>
+      <div class="avatar" id="chat-avatar"></div> <!-- Картинка -->
+      <div class="chat-title" id="chat-name">PhoneixGram</div>
+      <div class="back" onclick="openShop()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2aabee" stroke-width="2"><rect x="3" y="8" width="18" height="4" rx="1"></rect><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"></path></svg>
+      </div>
+    </div>
+    <div class="chat" id="chat-box">
+      <div class="msg in">
+        <div class="text">Привет! Добро пожаловать в PhoneixGram 🔥</div>
+        <div class="meta">12:00</div>
+      </div>
+    </div>
+    <div class="composer">
+      <input type="text" id="msg-input" class="field" placeholder="Сообщение" autocomplete="off">
+      <button class="btn-icon" onclick="sendMsg()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- 4. МАГАЗИН -->
+  <div id="shop-screen" class="screen hidden-down">
+    <div class="header-gift">
+      <div class="close-gift" onclick="closeShop()">✕</div>
+      <div class="title">Магазин</div>
+      <div class="balance" id="admin-trigger">
+        <span>⭐</span> <span id="star-count">0</span>
+      </div>
+    </div>
+    <div class="tabs" id="shop-tabs">
+      <div class="tab active" onclick="switchTab('gifts', this)">Подарки</div>
+      <div class="tab" onclick="switchTab('private', this)">Приватка</div>
+      <div class="tab" onclick="switchTab('username', this)">Юзы</div>
+      <div class="tab" onclick="switchTab('nft', this)">NFT</div>
+      <div class="tab" onclick="switchTab('number', this)">Номера</div>
+    </div>
+    <div class="shop-content" id="shop-content">
+      <div class="shop-grid" id="shop-grid"></div>
+      <button class="inventory-btn" onclick="openInventory()">🎒 Мой инвентарь</button>
+    </div>
+  </div>
+
+  <!-- 5. ИНВЕНТАРЬ -->
+  <div id="inventory-screen" class="screen hidden-right">
+    <div class="header">
+      <div class="back" onclick="closeInventory()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+      </div>
+      <div class="chat-title">Мой инвентарь</div>
+    </div>
+    <div class="inv-list" id="inv-list"></div>
+  </div>
+
+  <!-- 6. АДМИНКА -->
+  <div class="overlay" id="overlay" onclick="closeAdmin()"></div>
+  <div id="admin-panel">
+    <div class="admin-title">Админ-панель</div>
+    <div class="admin-group">
+      <label class="admin-label">Начислить звезды</label>
+      <input type="number" id="admin-stars" class="admin-input" placeholder="Например: 1000">
+    </div>
+    <div class="admin-btns">
+      <button class="btn btn-cancel" onclick="closeAdmin()">Отмена</button>
+      <button class="btn btn-save" onclick="saveAdmin()">Начислить</button>
+    </div>
+  </div>
+
+<script>
+  // ================= ДАННЫЕ И ХРАНИЛИЩЕ =================
+  let currentStars = parseInt(localStorage.getItem('pg_stars')) || 0;
+  let inventory = JSON.parse(localStorage.getItem('pg_inventory')) || [];
+  let currentTab = 'gifts';
+
+  const catalog = {
+    gifts: [
+      { id: 'g1', name: "Мишка", price: 15, icon: "🧸", bg: "#e91e63", type: "gift" },
+      { id: 'g2', name: "Роза", price: 25, icon: "🌹", bg: "#f44336", type: "gift" },
+      { id: 'g3', name: "Торт", price: 50, icon: "🎂", bg: "#9c27b0", type: "gift" },
+      { id: 'g4', name: "Сердце", price: 100, icon: "❤️", bg: "#e91e63", type: "gift" },
+      { id: 'g5', name: "Кубок", price: 200, icon: "🏆", bg: "#ff9800", type: "gift" },
+      { id: 'g6', name: "Бриллиант", price: 500, icon: "💎", bg: "#00bcd4", type: "gift" }
+    ],
+    private: [
+      { id: 'p1', name: "Приватка 1 мес", price: 150, icon: "🔒", bg: "#607d8b", type: "basic" },
+      { id: 'p2', name: "Приватка навсегда", price: 500, icon: "♾️", bg: "#4caf50", type: "basic" }
+    ],
+    username: [
+      { id: 'u1', name: "Юз @cool", price: 300, icon: "🏷", bg: "#9c27b0", type: "basic" },
+      { id: 'u2', name: "Юз @admin", price: 1000, icon: "👑", bg: "#ffc107", type: "basic" }
+    ],
+    nft: [
+      { id: 'n1', name: "Plush Pepe", price: 1500, icon: "🐸", bg: "linear-gradient(135deg, #4caf50, #1b5e20)", type: "nft", rarity: "Rare" },
+      { id: 'n2', name: "Durov's Cap", price: 3000, icon: "🧢", bg: "linear-gradient(135deg, #607d8b, #263238)", type: "nft", rarity: "Epic" },
+      { id: 'n3', name: "Heart", price: 2500, icon: "❤️", bg: "linear-gradient(135deg, #e91e63, #880e4f)", type: "nft", rarity: "Legendary" },
+      { id: 'n4', name: "Bear", price: 1200, icon: "🧸", bg: "linear-gradient(135deg, #795548, #3e2723)", type: "nft", rarity: "Uncommon" },
+      { id: 'n5', name: "Cake", price: 800, icon: "🎂", bg: "linear-gradient(135deg, #ff9800, #e65100)", type: "nft", rarity: "Common" },
+      { id: 'n6', name: "Diamond", price: 5000, icon: "💎", bg: "linear-gradient(135deg, #00bcd4, #006064)", type: "nft", rarity: "Mythic" }
+    ],
+    number: [
+      { id: 'num1', name: "Номер РФ", price: 200, icon: "🇷🇺", bg: "#2196f3", type: "basic" },
+      { id: 'num2', name: "Номер USA", price: 250, icon: "🇺🇸", bg: "#f44336", type: "basic" }
+    ]
+  };
+
+  function updateStorage() {
+    localStorage.setItem('pg_stars', currentStars);
+    localStorage.setItem('pg_inventory', JSON.stringify(inventory));
+    document.getElementById('star-count').innerText = currentStars;
+  }
+
+  function init() {
+    updateStorage();
+    renderShop();
+    verifyCodeUI();
+  }
+
+  // ================= АВТОРИЗАЦИЯ =================
+  function verifyCodeUI() {
+    document.getElementById('auth-screen').classList.remove('active');
+    document.getElementById('auth-screen').classList.add('hidden-left');
+    document.getElementById('main-screen').classList.remove('hidden-right');
+    document.getElementById('main-screen').classList.add('active');
+  }
+
+  function verifyCode() {
+    const code = document.getElementById('auth-code').value.trim();
+    if (code === '12345') {
+      document.getElementById('auth-screen').classList.add('hidden-left');
+      document.getElementById('main-screen').classList.remove('hidden-right');
+      document.getElementById('main-screen').classList.add('active');
+    } else {
+      document.getElementById('auth-error').style.display = 'block';
+    }
+  }
+
+  // ================= НАВИГАЦИЯ =================
+  function openChat(name, letter) {
+    document.getElementById('chat-name').innerText = name;
+    document.getElementById('main-screen').classList.add('hidden-left');
+    document.getElementById('chat-screen').classList.remove('hidden-right');
+    document.getElementById('chat-screen').classList.add('active');
+  }
+
+  function closeChat() {
+    document.getElementById('chat-screen').classList.add('hidden-right');
+    document.getElementById('chat-screen').classList.remove('active');
+    document.getElementById('main-screen').classList.remove('hidden-left');
+    document.getElementById('main-screen').classList.add('active');
+  }
+
+  function openShop() {
+    document.getElementById('shop-screen').classList.remove('hidden-down');
+    document.getElementById('shop-screen').classList.add('active');
+    updateStorage();
+  }
+
+  function closeShop() {
+    document.getElementById('shop-screen').classList.add('hidden-down');
+    document.getElementById('shop-screen').classList.remove('active');
+  }
+
+  function openInventory() {
+    renderInventory();
+    document.getElementById('inventory-screen').classList.remove('hidden-right');
+    document.getElementById('inventory-screen').classList.add('active');
+  }
+
+  function closeInventory() {
+    document.getElementById('inventory-screen').classList.add('hidden-right');
+    document.getElementById('inventory-screen').classList.remove('active');
+  }
+
+  // ================= МАГАЗИН =================
+  function switchTab(tab, el) {
+    currentTab = tab;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    renderShop();
+  }
+
+  function renderShop() {
+    const grid = document.getElementById('shop-grid');
+    grid.innerHTML = '';
+    
+    if (currentTab === 'nft') {
+      grid.classList.add('nft-mode');
+    } else {
+      grid.classList.remove('nft-mode');
+    }
+
+    const items = catalog[currentTab] || [];
+
+    items.forEach(item => {
+      if (item.type === 'nft') {
+        const card = document.createElement('div');
+        card.className = 'nft-card';
+        card.onclick = () => buyItem(item);
+        card.innerHTML = `
+          <div class="nft-preview" style="background: ${item.bg};">
+            <span class="nft-badge">${item.rarity}</span>
+            ${item.icon}
+          </div>
+          <div class="nft-info">
+            <div class="nft-name">${item.name}</div>
+            <div class="nft-price">⭐ ${item.price}</div>
+          </div>
+        `;
+        grid.appendChild(card);
+      } else {
+        const card = document.createElement('div');
+        card.className = 'shop-card';
+        card.onclick = () => buyItem(item);
+        card.innerHTML = `
+          <div class="shop-icon" style="background: ${item.bg}; color: #fff;">${item.icon}</div>
+          <div class="shop-name">${item.name}</div>
+          <div class="shop-price">⭐ ${item.price}</div>
+        `;
+        grid.appendChild(card);
+      }
+    });
+  }
+
+  function buyItem(item) {
+    if (currentStars < item.price) {
+      alert(`Недостаточно звезд! Нужно: ${item.price}, у вас: ${currentStars}`);
+      return;
+    }
+    
+    currentStars -= item.price;
+    inventory.push(item);
+    updateStorage();
+    alert(`Вы успешно купили: ${item.name}\nОстаток звезд: ${currentStars}`);
+  }
+
+  function renderInventory() {
+    const list = document.getElementById('inv-list');
+    list.innerHTML = '';
+    
+    if (inventory.length === 0) {
+      list.innerHTML = '<div style="text-align:center; color:#7d8b99; margin-top:20px;">Инвентарь пуст</div>';
+      return;
+    }
+
+    inventory.forEach(item => {
+      const el = document.createElement('div');
+      el.className = 'inv-item';
+      
+      const iconStyle = item.type === 'nft' 
+        ? `background: ${item.bg};` 
+        : `background: ${item.bg}; color: #fff;`;
+        
+      const rarityText = item.type === 'nft' ? `<span style="color:#2aabee; font-weight:bold;">[${item.rarity}]</span> ` : '';
+
+      el.innerHTML = `
+        <div class="inv-icon" style="${iconStyle}">${item.icon}</div>
+        <div class="inv-details">
+          <div class="inv-name">${rarityText}${item.name}</div>
+          <div class="inv-desc">Куплено за ${item.price} ⭐</div>
+        </div>
+      `;
+      list.appendChild(el);
+    });
+  }
+
+  // ================= ЧАТ =================
+  function now() {
+    const d = new Date();
+    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+
+  function sendMsg() {
+    const input = document.getElementById('msg-input');
+    const text = input.value.trim();
+    if (!text) return;
+    addMessage(text, 'out');
+    input.value = '';
+  }
+
+  function addMessage(text, side) {
+    const chat = document.getElementById('chat-box');
+    const msg = document.createElement('div');
+    msg.className = 'msg ' + side;
+    msg.innerHTML = `<div class="text">${text}</div><div class="meta">${now()}</div>`;
+    chat.appendChild(msg);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  document.getElementById('msg-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); sendMsg(); }
+  });
+
+  // ================= АДМИНКА =================
+  let holdTimer;
+  const trigger = document.getElementById('admin-trigger');
+  
+  const startHold = (e) => {
+    e.preventDefault();
+    holdTimer = setTimeout(() => {
+      document.getElementById('admin-stars').value = '';
+      document.getElementById('overlay').classList.add('active');
+      document.getElementById('admin-panel').classList.add('open');
+    }, 700);
+  };
+  
+  const cancelHold = () => clearTimeout(holdTimer);
+
+  trigger.addEventListener('mousedown', startHold);
+  trigger.addEventListener('touchstart', startHold);
+  trigger.addEventListener('mouseup', cancelHold);
+  trigger.addEventListener('touchend', cancelHold);
+  trigger.addEventListener('mouseleave', cancelHold);
+
+  function closeAdmin() {
+    document.getElementById('overlay').classList.remove('active');
+    document.getElementById('admin-panel').classList.remove('open');
+  }
+
+  function saveAdmin() {
+    const val = parseInt(document.getElementById('admin-stars').value);
+    if (!isNaN(val)) {
+      currentStars += val;
+      updateStorage();
+      alert(`Начислено ${val} звезд! Текущий баланс: ${currentStars}`);
+    }
+    closeAdmin();
+  }
+
+  init();
+</script>
+</body>
+  </html>
