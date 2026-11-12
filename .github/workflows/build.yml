@@ -32,6 +32,7 @@ jobs:
           ANDROID_HOME: ${{ github.workspace }}/../android-sdk
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
+          gradle wrapper   # <-- ВОТ ЭТА СТРОКА СОЗДАСТ ФАЙЛ gradlew
           chmod +x ./gradlew
           ./gradlew assembleDebug
 
