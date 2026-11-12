@@ -24,10 +24,7 @@ jobs:
           export ANDROID_HOME=$HOME/android-sdk
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
           
-          # Автоматически принимаем ВСЕ лицензии
           yes | sdkmanager --licenses > /dev/null 2>&1 || true
-          
-          # Устанавливаем нужные пакеты
           sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
       - name: Build with Gradle
